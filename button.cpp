@@ -10,12 +10,12 @@ uniform_int_distribution<int> dist(0, 1); // Distribution to generate either 0 o
 
 // Simulate reading the raw button state at time t (in ms)
 bool readRawButton(int t) {
-    if (t >= 20 && t <= 70) {          // If t is between 20ms and 70ms (bouncing period)
+    if ((t >= 20 && t <= 70) || (t >= 150 && t <= 170)) {          // If t is between 20ms and 70ms (bouncing period)
         return dist(gen);              // Return random true/false to simulate bouncing
-    } else if (t > 70) {               // If t is after 70ms (button is stably pressed)
+    } else if (t > 70 && t<150) {               // If t is after 70ms (button is stably pressed)
         return true;                   // Return true (pressed)
     } else {                           // If t is before 20ms (button not pressed)
-        return false;                  // Return false (not pressed)
+        return false;                  // stable release
     }
 }
 
@@ -23,22 +23,20 @@ bool debounce_button(bool raw_input){
 
     static bool last_state = false;           // Initialize last state to false (not pressed)
     static int stable_count = 0;     
-    static bool debounce_output;  // Static variable to count stable states
+    static bool debounce_output= false;  // Static variable to count stable states
 
-    if (raw_input != last_state) {     // If the raw input state has changed
-        stable_count = 0;               // Reset stable count
-                 
+    if (raw_input == debounce_output) {
+        stable_count = 0;  // no change detected, no need to debounce
     } else {
-        stable_count++;                  // Increment stable count if state is unchanged
+        stable_count++;    // potential state change, count stability
+        if (stable_count >= 3) {
+            debounce_output = raw_input; // apply state change
+            stable_count = 0;            // reset counter after update
+        }
     }
-   
-    last_state = raw_input; // Update last state to current raw input
 
-    if (stable_count >= 3) { // If the state has been stable for 3 consecutive reads
-       debounce_output= raw_input; // Return the stable state (either true or false)
-    } 
+    return debounce_output;           // Return the debounced output state
 
-    return debounce_output; // Return the debounced output state
     }
 
 
@@ -48,7 +46,7 @@ int main() {
 
 bool button_state;
 
-for (int t = 0; t <= 100; t += 10) {
+for (int t = 0; t <= 200; t += 10) {
     bool raw_state = readRawButton(t);
     bool debounced_state = debounce_button(raw_state);
     
